@@ -10,4 +10,5 @@ routr.register("notes", NoteViewSet)
 
 urlpatterns = [
     path("", include(routr.urls)),
+    path("create/", NoteViewSet.as_view({"put": "create"}), name="create_note"),
 ]

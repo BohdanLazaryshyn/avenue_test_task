@@ -1,15 +1,14 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, generics
 
 from note.models import Note
-from note.serializers import NoteSerializer, NoteListSerializer, NoteDetailSerializer
+from note.serializers import NoteSerializer
 
 
 class NoteViewSet(viewsets.ModelViewSet):
     queryset = Note.objects.all()
+    serializer_class = NoteSerializer
 
-    def get_serializer_class(self):
-        if self.action == "list":
-            return NoteListSerializer
-        if self.action == "retrieve":
-            return NoteDetailSerializer
-        return NoteSerializer
+
+class NoteCreateView(generics.CreateAPIView):
+    queryset = Note.objects.all()
+    serializer_class = NoteSerializer
