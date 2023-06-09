@@ -1,9 +1,14 @@
 from math import ceil
-
 import requests
 import telebot
-from datetime import datetime
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+
+from telegram_bots.utils import check_id, check_content, check_date, check_connect
 
 bot_token_2 = "6077204161:AAGKxrXF7mMt7mYkljwVX_9R0c0-RkzSDRw"
 task_bot = telebot.TeleBot(bot_token_2)
@@ -14,40 +19,9 @@ keyboard = ReplyKeyboardMarkup(row_width=1)
 button = KeyboardButton("/help")
 keyboard.add(button)
 
-ITEMS_PER_PAGE = 2
-tasks_list = []
-total_pages = 0
-
-def check_id(message, number):
-    try:
-        int(number)
-    except ValueError:
-        task_bot.send_message(message.chat.id, "ID повинне бути числом")
-        return False
-    return True
-
-
-def check_title(message, title):
-    if title is None:
-        task_bot.send_message(message.chat.id, "Заголовок не введено")
-        return False
-    return True
-
-
-def check_connect(url):
-    try:
-        requests.get(url)
-    except requests.exceptions.ConnectionError:
-        return False
-    return True
-
-
-def check_date(message, date):
-    try:
-        due_date = datetime.strptime(date, "%Y-%m-%d").date()
-    except ValueError:
-        return False
-    return due_date
+ITEMS_PER_PAGE = 2  # Кількість елементів на сторінці
+tasks_list = []  # Список завдань
+total_pages = 0  # Кількість сторінок
 
 
 @task_bot.message_handler(commands=["start", "help"])
@@ -64,6 +38,7 @@ def start(message):
         "/delete - для видалення завдань",
         reply_markup=keyboard
     )
+
 
 @task_bot.message_handler(commands=["list"])
 def task_list(message):
@@ -93,7 +68,7 @@ def handle_list_page_callback(call):
     task_bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
-def send_task_page(message, tasks, page, total_pages):
+def send_task_page(message, tasks, page, pages):
     start_index = (page - 1) * ITEMS_PER_PAGE
     end_index = start_index + ITEMS_PER_PAGE
     tasks_page = tasks[start_index:end_index]
@@ -107,15 +82,15 @@ def send_task_page(message, tasks, page, total_pages):
         for task in tasks_page
     ])
 
-    pagination_text = f"Page {page}/{total_pages}"
+    pagination_text = f"Page {page}/{pages}"
 
     keyboard = InlineKeyboardMarkup()
     if page > 1:
         keyboard.add(InlineKeyboardButton("<< Перша", callback_data=f"list_page#1"))
         keyboard.add(InlineKeyboardButton("Previous", callback_data=f"list_page#{page - 1}"))
-    if page < total_pages:
+    if page < pages:
         keyboard.add(InlineKeyboardButton("Next", callback_data=f"list_page#{page + 1}"))
-        keyboard.add(InlineKeyboardButton("Остання >>", callback_data=f"list_page#{total_pages}"))
+        keyboard.add(InlineKeyboardButton("Остання >>", callback_data=f"list_page#{pages}"))
 
     task_bot.send_message(message.chat.id, f"Список заміток:\n{tasks_text}\n\n{pagination_text}", reply_markup=keyboard)
 
@@ -127,7 +102,7 @@ def view_task(message):
 
 
 def get_task_by_id(message):
-    if not check_id(message, message.text):
+    if not check_id(message, task_bot, message.text):
         return view_task(message)
 
     task_id = message.text
@@ -138,9 +113,8 @@ def get_task_by_id(message):
         return
 
     response = requests.get(url)
-    task = response.json()
-
-    if task and response.status_code == 200:
+    if response.status_code == 200:
+        task = response.json()
         task_text = f"ID: {task['id']}, " \
                     f"Title: {task['title']}, " \
                     f"Description: {task['description']}, " \
@@ -158,7 +132,7 @@ def delete_task(message):
 
 
 def delete_task_by_id(message):
-    if not check_id(message, message.text):
+    if not check_id(message, task_bot, message.text):
         return delete_task(message)
 
     task_id = message.text
@@ -171,7 +145,7 @@ def delete_task_by_id(message):
     response = requests.delete(url)
 
     if response.status_code == 204:
-        task_bot.send_message(message.chat.id, "Завдання видалено")
+        task_bot.send_message(message.chat.id, f"Завдання {task_id} видалено")
     else:
         task_bot.send_message(message.chat.id, "Завдання не знайдено")
 
@@ -183,7 +157,7 @@ def complete_task(message):
 
 
 def complete_task_by_id(message):
-    if not check_id(message, message.text):
+    if not check_id(message, task_bot, message.text):
         return complete_task(message)
 
     task_id = message.text
@@ -199,7 +173,7 @@ def complete_task_by_id(message):
     if task and response.status_code == 200:
         task["completed"] = True
         response = requests.put(url, task)
-        task_bot.send_message(message.chat.id, "Статус завдання оновлено")
+        task_bot.send_message(message.chat.id, f"Статус завдання {task_id} оновлено")
     else:
         task_bot.send_message(message.chat.id, "Завдання не знайдено")
 
@@ -211,7 +185,7 @@ def create_task(message):
 
 
 def get_title(message):
-    if not check_title(message, message.text):
+    if not check_content(message, task_bot, message.text):
         return create_task(message)
 
     title = message.text
@@ -220,13 +194,15 @@ def get_title(message):
 
 
 def get_description(message, title):
+    if not check_content(message, task_bot, message.text):
+        return create_task(message)
     description = message.text
     task_bot.send_message(message.chat.id, "Введіть дату виконання: (формат: YYYY-MM-DD)")
     task_bot.register_next_step_handler(message, get_due_date, title, description)
 
 
 def get_due_date(message, title, description):
-    if not check_date(message, message.text):
+    if not check_date(message, task_bot, message.text):
         return create_task(message)
     else:
         due_date = check_date(message, message.text)
@@ -256,7 +232,7 @@ def update_task(message):
 
 
 def get_id_for_update(message):
-    if not check_id(message, message.text):
+    if not check_id(message, task_bot, message.text):
         return update_task(message)
 
     task_id = message.text
@@ -265,9 +241,8 @@ def get_id_for_update(message):
 
 
 def update_title(message, task_id):
-    if not check_title(message, message.text):
+    if not check_content(message, task_bot, message.text):
         return update_task(message)
-
     title = message.text
 
     url = f"{URL}{task_id}/"
