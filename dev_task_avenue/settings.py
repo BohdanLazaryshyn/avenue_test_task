@@ -9,8 +9,12 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -125,3 +129,11 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Telegram bot token
+TASK_BOT_TOKEN = os.getenv("TASK_BOT_TOKEN")
+NOTE_BOT_TOKEN = os.getenv("NOTE_BOT_TOKEN")
+
+# API URLS
+TASK_API_URL = "http://localhost:8000/task/tasks/"
+NOTE_API_URL = "http://localhost:8000/note/notes/"

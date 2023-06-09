@@ -3,23 +3,30 @@ from datetime import datetime
 import requests
 
 
-def check_id(message, bot_name, number):
+def check_cancel(message, bot_name):   # перевірка на відміну команди
+    if message.text == "/cancel":
+        bot_name.send_message(message.chat.id, "Команда відмінена")
+        return True
+    return False
+
+
+def check_id(message, bot_name, number):   # перевірка на відповідність ID
     try:
         int(number)
     except ValueError:
-        bot_name.send_message(message.chat.id, "ID повинне бути числом")
+        bot_name.send_message(message.chat.id, "ID повинне бути числом, оберіть команду знову")
         return False
     return True
 
 
-def check_content(message, bot_name, content):
+def check_content(message, bot_name, content):   # перевірка на наявність вмісту
     if content is None:
         bot_name.send_message(message.chat.id, "Дані не введено")
         return False
     return True
 
 
-def check_connect(url):
+def check_connect(url):   # перевірка на підключення до сервера
     try:
         requests.get(url)
     except requests.exceptions.ConnectionError:
@@ -27,7 +34,7 @@ def check_connect(url):
     return True
 
 
-def check_date(message, bot_name, date):
+def check_date(message, bot_name, date):   # перевірка на відповідність дати
     try:
         due_date = datetime.strptime(date, "%Y-%m-%d").date()
         today = datetime.now().date()
