@@ -2,9 +2,9 @@ import requests
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
-bot_token = "6000814952:AAGwaSXrmBlcPnNJjP9uoEo8ybmSKOkReCo"
+bot_token_1 = "6000814952:AAGwaSXrmBlcPnNJjP9uoEo8ybmSKOkReCo"
 
-bot = telebot.TeleBot(bot_token)
+bot = telebot.TeleBot(bot_token_1)
 URL = "http://localhost:8000/note/notes/"
 
 
@@ -45,11 +45,6 @@ def check_connect(url):
     return True
 
 
-def create_blank(message, blank, template):
-    chat_id = message.chat.id
-    blank[chat_id] = template
-
-
 @bot.message_handler(commands=["start", "help"])
 def start(message):
     bot.send_message(
@@ -59,7 +54,7 @@ def start(message):
         "/create - для створення замітки\n"
         "/update - для оновлення замітки\n"
         "/list - для виведення списку заміток\n"
-        "/view - для видалення замітки\n"
+        "/view - для виведення замітки\n"
         "/delete - для видалення замітки",
         reply_markup=keyboard
     )
@@ -131,12 +126,12 @@ def update_note_content(message):
     update_note[chat_id]["content"] = message.text
     id = update_note[chat_id]["id"]
     content = update_note[chat_id]["content"]
-    params = {"content": content}
-    url = URL + id + "/"
+    json = {"content": content}
+    url = f"{URL}{id}/"
     if not check_connect(url):
         bot.send_message(message.chat.id, "Помилка підключення")
         return update_note_title(message)
-    response = requests.patch(url, json=params)
+    response = requests.patch(url, json=json)
     bot.send_message(chat_id, f"Замітка\n ID:{id} оновлена\n Новий вміст: {content}")
     del update_note[chat_id]
 
